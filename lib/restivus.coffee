@@ -2,6 +2,13 @@ class @Restivus
 
   constructor: (options) ->
     @_routes = []
+
+    xAuthTokenLCName =
+      if options?.xAuthTokenName
+        options.xAuthTokenName.toLowerCase()
+      else
+        'x-auth-token'
+
     @_config =
       paths: []
       useDefaultAuth: false
@@ -11,8 +18,8 @@ class @Restivus
       auth:
         token: 'services.resume.loginTokens.hashedToken'
         user: ->
-          if @request.headers['x-auth-token']
-            token = Accounts._hashLoginToken @request.headers['x-auth-token']
+          if @request.headers[xAuthTokenLCName]
+            token = Accounts._hashLoginToken @request.headers[xAuthTokenLCName]
           userId: @request.headers['x-user-id']
           token: token
       onLoggedIn: -> {}
@@ -20,6 +27,9 @@ class @Restivus
       defaultHeaders:
         'Content-Type': 'application/json'
       enableCors: true
+      authTokenName: 'authToken'
+      xAuthTokenName: 'X-Auth-Token'
+      xAuthTokenLCName: xAuthTokenLCName
 
     # Configure API with the given options
     _.extend @_config, options
@@ -30,7 +40,7 @@ class @Restivus
         'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept'
 
       if @_config.useDefaultAuth
-        corsHeaders['Access-Control-Allow-Headers'] += ', X-User-Id, X-Auth-Token'
+        corsHeaders['Access-Control-Allow-Headers'] += ', X-User-Id, '+ @_config.xAuthTokenName
 
       # Set default header to enable CORS if configured
       _.extend @_config.defaultHeaders, corsHeaders
@@ -299,11 +309,15 @@ class @Restivus
         # Call the login hook with the authenticated user attached
         self._config.onLoggedIn.call this
 
-        {status: 'success', data: auth}
+        # This may be a no-op, but if the key is different we must translate
+        data = {userId: auth.userId}
+        data[self._config.authTokenName] = auth.authToken
+
+        {status: 'success', data: data}
 
     logout = ->
       # Remove the given auth token from the user's account
-      authToken = @request.headers['x-auth-token']
+      authToken = @request.headers[self._config.xAuthTokenLCName]
       hashedToken = Accounts._hashLoginToken authToken
       tokenLocation = self._config.auth.token
       index = tokenLocation.lastIndexOf '.'

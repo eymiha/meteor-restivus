@@ -19,6 +19,12 @@ LegacyNoDefaultAuthApi = new Restivus
   apiPath: 'legacy-no-default-auth'
   useAuth: false
 
+DifferentTokenAuth = new Restivus
+  apiPath: 'different-token-auth'
+  useAuth: true
+  authTokenName: 'different'
+  xAuthTokenName: 'x-Different'
+
 describe 'Authentication', ->
 
   it 'can be required even when the default endpoints aren\'t configured', (test, waitFor) ->
@@ -38,6 +44,7 @@ describe 'Authentication', ->
 describe 'The default authentication endpoints', ->
   token = null
   emailLoginToken = null
+  differentToken = null
   username = 'test'
   email = 'test@ivus.com'
   password = 'password'
@@ -92,6 +99,17 @@ describe 'The default authentication endpoints', ->
       test.isUndefined response?.data?.userId
       test.isUndefined response?.data?.authToken
 
+    HTTP.post Meteor.absoluteUrl('different-token-auth/login'), {
+      data:
+        user: username
+        password: password
+    }, waitFor (error, result) ->
+      response = result.data
+      test.equal result.statusCode, 200
+      test.equal response.status, 'success'
+      test.equal response.data.userId, userId
+      test.isTrue response.data.different
+
 
   it 'should allow a user to login', (test, waitFor) ->
     # Explicit username
@@ -145,6 +163,22 @@ describe 'The default authentication endpoints', ->
       # Store the token for later use
       token = response.data.authToken
 
+    # Different Auth Token Name
+    HTTP.post Meteor.absoluteUrl('different-token-auth/login'), {
+      data:
+        user: email
+        password: password
+    }, waitFor (error, result) ->
+      response = result.data
+      test.equal result.statusCode, 200
+      test.equal response.status, 'success'
+      test.equal response.data.userId, userId
+      test.isTrue response.data.different
+
+      # Store the token for later use
+      differentToken = response.data.different
+      console.log 'differentToken', differentToken
+
 
   it 'should allow a user to login again, without affecting the first login', (test, waitFor) ->
     HTTP.post Meteor.absoluteUrl('default-auth/login'), {
@@ -187,6 +221,16 @@ describe 'The default authentication endpoints', ->
       response = result.data
       test.equal result.statusCode, 200
       test.equal response.status, 'success'
+
+    HTTP.post Meteor.absoluteUrl('different-token-auth/logout'), {
+      headers:
+        'X-User-Id': userId
+        'x-Different': differentToken
+    }, waitFor (error, result) ->
+      response = result.data
+      test.equal result.statusCode, 200
+      test.equal response.status, 'success'
+
 
   it 'should remove the logout token after logging out and should respond after 500 msec', (test, waitFor) ->
     DefaultAuthApi.addRoute 'prevent-access-after-logout', {authRequired: true},
