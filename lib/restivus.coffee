@@ -313,7 +313,10 @@ class @Restivus
         data = {userId: auth.userId}
         data[self._config.authTokenName] = auth.authToken
 
-        {status: 'success', data: data}
+        # {status: 'success', data: data}
+        headers = {status: 'success', userId: auth.userId}
+        headers[self._config.authTokenName] = auth.authToken
+        headers
 
     logout = ->
       # Remove the given auth token from the user's account
