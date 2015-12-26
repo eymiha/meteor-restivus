@@ -177,7 +177,7 @@ describe 'The default authentication endpoints', ->
 
       # Store the token for later use
       differentToken = response.data.different
-      console.log 'differentToken', differentToken
+      # console.log 'differentToken', differentToken
 
 
   it 'should allow a user to login again, without affecting the first login', (test, waitFor) ->
